@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["nombre", "apellidos", "correo", "contrasena", "tipo"],
+  "properties": {
+    "nombre": { "type": "string", "minLength": 1 },
+    "apellidos": { "type": "string", "minLength": 1 },
+    "correo": { "type": "string", "format": "email" },
+    "contrasena": {
+      "type": "string",
+      "minLength": 12,
+      "pattern": "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d]).+$"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": ["admin", "medico", "enfermera"]
+    },
+    "fecha_nacimiento": {
+  "type": ["string", "null"],
+  "format": "date"
+},
+"genero": {
+  "type": ["string", "null"]
+}
+
+  },
+  "additionalProperties": false
+}

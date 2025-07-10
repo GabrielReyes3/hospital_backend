@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["correo", "contrasena"],
+  "properties": {
+    "correo": {
+      "type": "string",
+      "format": "email"
+    },
+    "contrasena": {
+      "type": "string",
+      "minLength": 6
+    }
+  },
+  "additionalProperties": false
+}
