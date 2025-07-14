@@ -71,25 +71,21 @@ HOSPITAL_BACKEND/
 Clona el repositorio:
 
 bash
-Copiar
-Editar
+
 git clone https://github.com/GabrielReyes3/hospital_backend
 cd hospital_backend
 Crea un archivo .env con tu cadena de conexión:
 
 env
-Copiar
-Editar
+
 SUPABASE_CONN_STRING=postgresql://usuario:contraseña@host:puerto/basededatos
 JWT_SECRET=supersecreto
 JWT_REFRESH_SECRET=refresh_supersecreto
-Instala dependencias y ejecuta:
 
-bash
-Copiar
-Editar
+Instala dependencias y ejecuta:
 go mod tidy
 go run main.go
+
 📡 Endpoints Principales
 🔐 Autenticación
 Método	Ruta	Descripción
