@@ -10,7 +10,6 @@ import (
 	"os"
 	"regexp"
 	"time"
-
 	"github.com/GabrielReyes3/hospital_backend/db"
 	"github.com/GabrielReyes3/hospital_backend/models"
 	"github.com/go-playground/validator/v10"
@@ -18,8 +17,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pquerna/otp/totp"
 	"github.com/skip2/go-qrcode"
+
 )
 var validate = validator.New()
+
 
 
 // Hashea la contraseña usando SHA-256
@@ -143,6 +144,84 @@ func generateRefreshToken(userID string) (string, error) {
 
 
 
+func obtenerRolID(tipo string) (int, error) {
+    switch tipo {
+    case "paciente":
+        return 1, nil
+    case "medico":
+        return 2, nil
+    case "enfermera":
+        return 3, nil
+    default:
+        return 0, fmt.Errorf("tipo de usuario inválido: %s", tipo)
+    }
+}
+
+func CrearUsuario(c *fiber.Ctx) error {
+    var input UsuarioInput
+
+    if err := c.BodyParser(&input); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "JSON inválido"})
+    }
+
+    if err := validate.Struct(input); err != nil {
+        return c.Status(400).JSON(fiber.Map{
+            "error":   "Validación fallida",
+            "detalle": err.Error(),
+        })
+    }
+
+    if !isValidPassword(input.Contrasena) {
+        return c.Status(400).JSON(fiber.Map{
+            "error": "La contraseña debe tener mínimo 12 caracteres, un número y un símbolo",
+        })
+    }
+
+    rolID, err := obtenerRolID(input.Tipo)
+    if err != nil {
+        return c.Status(400).JSON(fiber.Map{
+            "error": err.Error(),
+        })
+    }
+
+    usuario := models.Usuario{
+        Nombre:          input.Nombre,
+        Apellidos:       input.Apellidos,
+        Tipo:            input.Tipo,
+        FechaNacimiento: toNullString(input.FechaNacimiento),
+        Genero:          toNullString(input.Genero),
+        Correo:          input.Correo,
+        Contrasena:      hashPassword(input.Contrasena),
+        RolID:           rolID,
+    }
+
+    query := `
+        INSERT INTO usuarios (nombre, apellidos, tipo, fecha_nacimiento, genero, correo, contrasena, rol_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+    `
+
+    err = db.Pool.QueryRow(
+        c.Context(),
+        query,
+        usuario.Nombre,
+        usuario.Apellidos,
+        usuario.Tipo,
+        usuario.FechaNacimiento,
+        usuario.Genero,
+        usuario.Correo,
+        usuario.Contrasena,
+        usuario.RolID,
+    ).Scan(&usuario.ID)
+
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+    }
+
+    return c.Status(201).JSON(usuario)
+}
+
+
 
 func ObtenerUsuarios(c *fiber.Ctx) error {
     rows, err := db.Pool.Query(c.Context(), "SELECT id, nombre, apellidos, tipo, fecha_nacimiento, genero, correo, contrasena FROM usuarios")
@@ -184,62 +263,8 @@ func toNullString(s string) sql.NullString {
 
 
 
-func CrearUsuario(c *fiber.Ctx) error {
-    var input UsuarioInput
 
-    if err := c.BodyParser(&input); err != nil {
-        return c.Status(400).JSON(fiber.Map{"error": "JSON inválido"})
-    }
 
-    // Validación adicional con validator
-    if err := validate.Struct(input); err != nil {
-        return c.Status(400).JSON(fiber.Map{
-            "error":   "Validación fallida",
-            "detalle": err.Error(),
-        })
-    }
-
-    // Validar contraseña personalizada
-    if !isValidPassword(input.Contrasena) {
-        return c.Status(400).JSON(fiber.Map{
-            "error": "La contraseña debe tener mínimo 12 caracteres, un número y un símbolo",
-        })
-    }
-
-    usuario := models.Usuario{
-        Nombre:          input.Nombre,
-        Apellidos:       input.Apellidos,
-        Tipo:            input.Tipo,
-        FechaNacimiento: toNullString(input.FechaNacimiento),
-        Genero:          toNullString(input.Genero),
-        Correo:          input.Correo,
-        Contrasena:      hashPassword(input.Contrasena),
-    }
-
-    query := `
-        INSERT INTO usuarios (nombre, apellidos, tipo, fecha_nacimiento, genero, correo, contrasena)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-    `
-
-    err := db.Pool.QueryRow(
-        c.Context(),
-        query,
-        usuario.Nombre,
-        usuario.Apellidos,
-        usuario.Tipo,
-        usuario.FechaNacimiento.String,
-        usuario.Genero.String,
-        usuario.Correo,
-        usuario.Contrasena,
-    ).Scan(&usuario.ID)
-
-    if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-    }
-
-    return c.Status(201).JSON(usuario)
-}
 
 func Login(c *fiber.Ctx) error {
     var req models.LoginRequest

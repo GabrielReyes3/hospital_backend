@@ -4,6 +4,7 @@ import (
     "github.com/gofiber/fiber/v2"
     "github.com/golang-jwt/jwt/v5"
     "os"
+    "strconv"
 )
 
 var accessSecret = []byte(os.Getenv("ACCESS_SECRET"))
@@ -39,8 +40,27 @@ func RequireAuth() fiber.Handler {
             })
         }
 
-        // Adjuntar user_id al contexto
-        c.Locals("user_id", claims["user_id"])
+        // Convertir user_id a int para mantener consistencia
+        var userID int
+        switch v := claims["user_id"].(type) {
+        case float64:
+            userID = int(v)
+        case string:
+            id, err := strconv.Atoi(v)
+            if err != nil {
+                return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                    "error": "user_id inválido en token",
+                })
+            }
+            userID = id
+        default:
+            return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                "error": "Tipo inválido para user_id",
+            })
+        }
+
+        // Guardar user_id como int en el contexto
+        c.Locals("user_id", userID)
 
         return c.Next()
     }
